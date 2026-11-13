@@ -1,0 +1,103 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Kasir Sederhana</title>
+<style>
+*{box-sizing:border-box}body{margin:0;font-family:Arial,sans-serif;background:#f3f4f6;color:#111827}
+header{background:#111827;color:white;padding:18px 24px;font-size:24px;font-weight:700;display:flex;align-items:center;justify-content:space-between;gap:16px}
+.back-link{display:inline-flex;align-items:center;gap:8px;padding:9px 14px;border:1px solid #9ca3af;border-radius:9px;color:#fff;text-decoration:none;font-size:14px;font-weight:600;white-space:nowrap;transition:background .2s,border-color .2s}
+.back-link:hover{background:#374151;border-color:#d1d5db;color:#fff}
+.back-link:focus-visible{outline:3px solid #a5b4fc;outline-offset:3px}
+.container{max-width:1200px;margin:22px auto;padding:0 16px;display:grid;grid-template-columns:1.35fr .9fr;gap:18px}
+.card{background:#fff;border-radius:14px;padding:18px;box-shadow:0 4px 18px #00000010}
+h2{margin:0 0 14px;font-size:19px}.toolbar{display:flex;gap:10px;margin-bottom:14px}
+input,select,button{font:inherit;padding:10px;border:1px solid #d1d5db;border-radius:9px}
+input,select{width:100%}button{cursor:pointer;background:#111827;color:#fff;border:0}
+button.secondary{background:#e5e7eb;color:#111827}.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:12px}
+.product{border:1px solid #e5e7eb;border-radius:12px;padding:14px}.product b{display:block;margin-bottom:7px}.price{color:#374151;margin-bottom:10px}
+.product button{width:100%}.cart-row{display:grid;grid-template-columns:1fr 90px 85px 32px;gap:7px;align-items:center;border-bottom:1px solid #eee;padding:10px 0}
+.qty{text-align:center}.summary{margin-top:14px;border-top:1px solid #ddd;padding-top:14px}.line{display:flex;justify-content:space-between;margin:8px 0}.total{font-size:22px;font-weight:700}
+.actions{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:14px}.full{grid-column:1/-1}
+.empty{text-align:center;color:#6b7280;padding:25px}
+@media(max-width:800px){.container{grid-template-columns:1fr}}
+@media(max-width:480px){header{padding:16px;font-size:21px}}
+@media print{header,.toolbar,.products,.actions,.no-print{display:none!important}.container{display:block;margin:0}.card{box-shadow:none}}
+</style>
+</head>
+<body>
+<header>
+<span>🧾 Kasir Sederhana</span>
+<a href="index.html" class="back-link"><span aria-hidden="true">←</span>Kembali ke Portofolio</a>
+</header>
+<div class="container">
+<section class="card">
+<h2>Daftar Produk</h2>
+<div class="toolbar"><input id="search" placeholder="Cari produk..." oninput="renderProducts()"></div>
+<div id="products" class="grid products"></div>
+</section>
+<section class="card">
+<h2>Keranjang</h2>
+<div id="cart"></div>
+<div class="summary">
+<div class="line"><span>Subtotal</span><b id="subtotal">Rp0</b></div>
+<div class="line"><span>Diskon</span><input id="discount" type="number" min="0" value="0" oninput="renderCart()" style="max-width:130px"></div>
+<div class="line total"><span>Total</span><span id="total">Rp0</span></div>
+<div style="margin-top:12px"><label>Uang Dibayar</label><input id="paid" type="number" min="0" value="0" oninput="renderCart()"></div>
+<div class="line"><span>Kembalian</span><b id="change">Rp0</b></div>
+<div class="actions">
+<button onclick="checkout()">Bayar & Simpan</button>
+<button class="secondary" onclick="clearCart()">Kosongkan</button>
+<button class="secondary full" onclick="window.print()">🖨️ Cetak Struk</button>
+</div>
+</div>
+</section>
+<section class="card full no-print" style="grid-column:1/-1">
+<h2>Riwayat Transaksi</h2>
+<div id="history"></div>
+</section>
+</div>
+<script>
+const defaultProducts=[
+{id:1,name:"Nasi Goreng",price:15000},{id:2,name:"Mie Goreng",price:13000},
+{id:3,name:"Ayam Geprek",price:18000},{id:4,name:"Es Teh",price:5000},
+{id:5,name:"Kopi",price:8000},{id:6,name:"Air Mineral",price:4000}
+];
+let products=JSON.parse(localStorage.getItem("products")||"null")||defaultProducts;
+let cart=JSON.parse(localStorage.getItem("cart")||"[]");
+let history=JSON.parse(localStorage.getItem("history")||"[]");
+const rupiah=n=>new Intl.NumberFormat("id-ID",{style:"currency",currency:"IDR",maximumFractionDigits:0}).format(n);
+function save(){localStorage.setItem("products",JSON.stringify(products));localStorage.setItem("cart",JSON.stringify(cart));localStorage.setItem("history",JSON.stringify(history))}
+function renderProducts(){
+ const q=document.getElementById("search").value.toLowerCase();
+ document.getElementById("products").innerHTML=products.filter(p=>p.name.toLowerCase().includes(q)).map(p=>
+ `<div class="product"><b>${p.name}</b><div class="price">${rupiah(p.price)}</div><button onclick="add(${p.id})">Tambah</button></div>`).join("")||'<div class="empty">Produk tidak ditemukan.</div>';
+}
+function add(id){const x=cart.find(i=>i.id===id);if(x)x.qty++;else cart.push({id,qty:1});save();renderCart()}
+function remove(id){cart=cart.filter(i=>i.id!==id);save();renderCart()}
+function changeQty(id,d){const x=cart.find(i=>i.id===id);if(!x)return;x.qty+=d;if(x.qty<=0)remove(id);else{save();renderCart()}}
+function totals(){let sub=cart.reduce((s,i)=>s+(products.find(p=>p.id===i.id)?.price||0)*i.qty,0);let dis=Math.max(0,Number(document.getElementById("discount").value)||0);return{sub,dis,total:Math.max(0,sub-dis)}}
+function renderCart(){
+ const el=document.getElementById("cart");
+ if(!cart.length)el.innerHTML='<div class="empty">Keranjang masih kosong.</div>';
+ else el.innerHTML=cart.map(i=>{let p=products.find(x=>x.id===i.id);return `<div class="cart-row"><span>${p.name}</span><span class="qty">${i.qty} <button class="secondary" onclick="changeQty(${i.id},1)">+</button> <button class="secondary" onclick="changeQty(${i.id},-1)">−</button></span><b>${rupiah(p.price*i.qty)}</b><button onclick="remove(${i.id})">×</button></div>`}).join("");
+ const t=totals(),paid=Number(document.getElementById("paid").value)||0;
+ document.getElementById("subtotal").textContent=rupiah(t.sub);document.getElementById("total").textContent=rupiah(t.total);document.getElementById("change").textContent=rupiah(Math.max(0,paid-t.total));save()
+}
+function clearCart(){cart=[];document.getElementById("discount").value=0;document.getElementById("paid").value=0;save();renderCart()}
+function checkout(){
+ if(!cart.length)return alert("Keranjang masih kosong.");
+ const t=totals(),paid=Number(document.getElementById("paid").value)||0;
+ if(paid<t.total)return alert("Uang dibayar masih kurang.");
+ history.unshift({date:new Date().toLocaleString("id-ID"),items:cart.map(i=>({...i})),...t,paid,change:paid-t.total});
+ history=history.slice(0,50);alert("Transaksi berhasil disimpan!");clearCart();renderHistory();save()
+}
+function renderHistory(){
+ document.getElementById("history").innerHTML=history.length?history.map((h,i)=>
+ `<div style="border-bottom:1px solid #eee;padding:10px 0"><b>${h.date}</b> — Total ${rupiah(h.total)} — Dibayar ${rupiah(h.paid)} — Kembalian ${rupiah(h.change)}</div>`).join(""):'<div class="empty">Belum ada transaksi.</div>'
+}
+renderProducts();renderCart();renderHistory();
+</script>
+</body>
+</html>
